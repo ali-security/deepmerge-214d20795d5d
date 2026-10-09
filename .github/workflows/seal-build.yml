@@ -1,0 +1,38 @@
+# Tests run on Travis (.travis.yml); this workflow only builds and packs the release tarball.
+name: seal-build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # The public tarball was packed with Node 16.8.0 / npm 8.6.0.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 16.8.0
+
+      - run: npm install -g npm@8.6.0
+
+      - run: node --version && npm --version
+
+      # package-lock.json pins v8-argv as git+ssh://git@github.com/...; the runner has no SSH key.
+      - run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm pack
+
+      - run: ls -l deepmerge-*.tgz && tar tzvf deepmerge-*.tgz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deepmerge-tgz
+          path: deepmerge-*.tgz
+          if-no-files-found: error
